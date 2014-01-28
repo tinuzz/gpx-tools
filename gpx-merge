@@ -1,0 +1,14 @@
+#!/usr/bin/python
+
+import sys
+import gpxtools
+
+try:
+    file1 = sys.argv[1]
+    file2 = sys.argv[2]
+except Exception:
+    print "Usage: gpx-merge <file1> <file2>"
+    print "Merge <file2> into <file1> and optionally delete <file2>"
+    sys.exit(1)
+
+gpxtools.merge(file1, file2)
