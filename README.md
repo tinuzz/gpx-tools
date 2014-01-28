@@ -66,7 +66,7 @@ the option to delete &lt;file2&gt;.
 gpxtools.py
 -----------
 
-The scripts describes above are merely wrappers around functions in the
+The scripts described above are merely wrappers around functions in the
 gpxtools.py module. All the real functionality is in the module.
 
 
