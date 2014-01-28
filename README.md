@@ -14,9 +14,9 @@ so only tracks are retained. It does not modify the original file, but if
 a file for a given date already exists, it merges the result into the existing
 file.
 
-For example, if you have a GPX file, that contains tracks from several dates
+For example, consider a GPX file, that contains tracks from several dates
 (the date for a track is taken from the &lt;time&gt; tag from the first &lt;trkpt&gt; in
-the track), for example 2, 3 and 4 January 2014. Running 'gpx-split' on the
+the track), let's say 2, 3 and 4 January 2014. Running 'gpx-split' on the
 file will give you the following new files:
 
 * 2014-01-02-000.gpx
