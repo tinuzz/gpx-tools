@@ -6,7 +6,7 @@ Some Python scripts to deal with GPX files
 gpx-split
 ---------
 
-Usage: gpx-split <filename>
+Usage: gpx-split &lt;filename&gt;
 
 This script splits out tracks from a GPX file into different files, one file
 per date. It removes all non-track items (routes, waypoints, extensions),
@@ -15,7 +15,7 @@ a file for a given date already exists, it merges the result into the existing
 file.
 
 For example, if you have a GPX file, that contains tracks from several dates
-(the date for a track is taken from the <time> tag from the first <trkpt> in
+(the date for a track is taken from the &lt;time&gt; tag from the first &lt;trkpt&gt; in
 the track), for example 2, 3 and 4 January 2014. Running 'gpx-split' on the
 file will give you the following new files:
 
@@ -44,23 +44,23 @@ create [weird track archives](http://garminzumo.wikispaces.com/BUGS#Triplogs%20&
 gpx-merge
 ---------
 
-Usage: gpx-merge <file1> <file2>
+Usage: gpx-merge &lt;file1&gt; &lt;file2&gt;
 
-This script merges tracks from <file2> into <file1> and optionally deletes
-<file2>. If <file1> contains non-track items (routes, waypoints), they are
-left untouched, but the script does not regard non-track items from <file2>.
+This script merges tracks from &lt;file2&gt; into &lt;file1&gt; and optionally deletes
+&lt;file2&gt;. If &lt;file1&gt; contains non-track items (routes, waypoints), they are
+left untouched, but the script does not regard non-track items from &lt;file2&gt;.
 
-It first analyzes <file1> and then scans <file2> for tracks. If a certain track
-name from <file2> does not occur in <file1>, the track is simply appended to
-<file1>. If the name does already occur, the number of track points in the
-track is examined, and the higest number wins. So if the track from <file2>
-has more points than the track from <file1>, it will completely replace the
+It first analyzes &lt;file1&gt; and then scans &lt;file2&gt; for tracks. If a certain track
+name from &lt;file2&gt; does not occur in &lt;file1&gt;, the track is simply appended to
+&lt;file1&gt;. If the name does already occur, the number of track points in the
+track is examined, and the higest number wins. So if the track from &lt;file2&gt;
+has more points than the track from &lt;file1&gt;, it will completely replace the
 existing track, and otherwise it is discarded.
 
 The script is interactive, which means that if the merge operation leads to
-changes in <file1>, the user is asked whether <file1> may be overwritten and
-<file2> removed. If <file1> is not to be modified, the user is still offered
-the option to delete <file2>.
+changes in &lt;file1&gt;, the user is asked whether &lt;file1&gt; may be overwritten and
+&lt;file2&gt; removed. If &lt;file1&gt; is not to be modified, the user is still offered
+the option to delete &lt;file2&gt;.
 
 
 gpxtools.py
