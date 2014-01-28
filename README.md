@@ -35,7 +35,7 @@ number wins. So if the track from the second file has more points than the
 existing track, it will completely replace the existing track from the first
 file, otherwise it is discarded. No effort is made to merge identically named
 tracks together. In other words: if identically named tracks differ in number
-of points, the difference is expected to be at the end, not at the beginning.
+of points, the shorter one is expected to be a subset of the longer one.
 
 This is convenient for some Garmin GPS devices (most notably the Zumo), that
 create [weird track archives](http://garminzumo.wikispaces.com/BUGS#Triplogs%20&%20tracks%20handling--Double%20data%20in%20archives,%20and/or%20incomplete%20files).
