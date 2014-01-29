@@ -75,7 +75,8 @@ Dependencies
 
 The scripts are developed and tested on Python 2.7. Other versions are
 untested. All XML operations are done with lxml.etree. There are no external
-dependencies.
+dependencies. Development and testing takes place on Linux, but superficial
+testing indicates, that the scripts also work with Python 2.7 on Windows.
 
 License
 -------
