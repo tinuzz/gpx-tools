@@ -17,6 +17,7 @@ import copy
 from iso8601 import parse_date
 from pprint import pprint,pformat
 from lxml import etree
+from math import radians, sin, cos, atan2, sqrt
 
 ns = '{http://www.topografix.com/GPX/1/1}'
 
@@ -39,6 +40,30 @@ def get_date(trk):
 
 def get_numpts(trk):
     return len(trk.findall(ns + 'trkseg/' + ns + 'trkpt'))
+
+def get_numtrk(root):
+    return len(root.findall(ns + 'trk'))
+
+def get_numwpt(root):
+    return len(root.findall(ns + 'wpt'))
+
+def get_numrte(root):
+    return len(root.findall(ns + 'rte'))
+
+def get_numrtept(rte):
+    return len(rte.findall(ns + 'rtept'))
+
+def distance(lat1, lon1, lat2, lon2):
+    radius = 6371000 # meter
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = sin(dlat/2) * sin(dlat/2) + cos(lat1) \
+        * cos(lat2) * sin(dlon/2) * sin(dlon/2)
+    c = 2 * atan2(sqrt(a), sqrt(1-a))
+    d = radius * c
+    return d
 
 def make_filename(d, dir='.'):
     global do_merge, base_file
@@ -176,5 +201,56 @@ def merge(file1, file2, interactive=True):
         if not interactive or yn == 'y':
             print "%-25s: Removing file" % file2
             os.remove(file2)
+
+def info(filename):
+    try:
+        tree0 = etree.parse(filename)
+    except Exception as e:
+        print "Could not parse GPX: %s" % e
+        return False
+
+    root = tree0.getroot()
+
+    print "Number of tracks   : %d" % get_numtrk(root)
+    print "Number of routes   : %d" % get_numrte(root)
+    print "Number of waypoints: %d" % get_numwpt(root)
+    print ''
+
+    for trk in root.iterchildren(ns + 'trk'):
+        name = get_name(trk)
+        print "Track name  : %s " % name
+        n = 0
+        trkd = 0
+        for trkseg in trk.iterchildren(ns + 'trkseg'):
+            numpts = len(list(trkseg))
+            oldlat = None
+            d = 0
+            for trkpt in trkseg.iterchildren(ns + 'trkpt'):
+                lat = float(trkpt.get('lat'))
+                lon = float(trkpt.get('lon'))
+                if oldlat != None:
+                    d += distance(oldlat, oldlon, lat, lon)
+                oldlat = lat
+                oldlon = lon
+            print "Segment %3d : %4d track points, distance: %d meter" % (n, numpts, d)
+            n += 1
+            trkd += d
+
+        pts = get_numpts(trk)
+        print "Total points  : %4d" % pts
+        print "Total distance: %d meter" % trkd
+        print ''
+
+    for rte in root.iterchildren(ns + 'rte'):
+        print "Route name  : %s " % get_name(rte).encode('utf-8')
+        print "Numer of route points: %d" % get_numrtept(rte)
+
+    print ''
+
+    for wpt in root.iterchildren(ns + 'wpt'):
+        name = get_name(wpt)
+        if name:
+            print "Waypoint name  : %s " % get_name(wpt).encode('utf-8')
+        #print "Waypoint name  : %s " % get_name(wpt)
 
 # vim: ts=4 sw=4 et :
