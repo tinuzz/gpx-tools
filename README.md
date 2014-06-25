@@ -86,7 +86,7 @@ the Apache License, version 2.0. A copy of the license can be found in the
 'LICENSE' file and [on the web](http://www.apache.org/licenses/LICENSE-2.0).
 
 The included copy of iso8601.py, a simple ISO 8601 date parsing module, is 
-copyright (c) 2007-2013 Michael Twomey and downloaded from
+copyright (c) 2007-2014 Michael Twomey and downloaded from
 [here](https://bitbucket.org/micktwomey/pyiso8601). It is released under a
-permissive license, that can be found in the file '[iso8601.LICENSE](iso8601.LICENSE)'.
+permissive license, that can be found in the file [iso8601.LICENSE](iso8601.LICENSE).
 
