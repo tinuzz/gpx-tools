@@ -21,7 +21,7 @@ from datetime import timedelta
 try:
     filename = sys.argv[1]
 except Exception:
-    print("Usage: gpx-split <filename> <timezone>")
+    print("Usage: gpx-split <filename> <timezone> <delta in hours>")
     print("Split tracks from <filename> to individual files")
     sys.exit(1)
 
@@ -30,11 +30,15 @@ try:
     # if timezone is automatic we use the timezonefinder to find by coordinates
     if tz == "automatic":
         import timezonefinder
-
         tz = timezonefinder.TimezoneFinder()
 except Exception:
     tz = None
 
-gpxtools.split(filename, tz, split_time=timedelta(hours=4))
+try:
+    td = timedelta(hours=sys.argv[3])
+except Exception:
+    td = timedelta()
+
+gpxtools.split(filename, tz, split_time=td)
 
 # vim: ts=4 sw=4 et :
