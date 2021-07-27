@@ -18,6 +18,8 @@ import sys
 import gpxtools
 from datetime import timedelta
 
+
+
 try:
     filename = sys.argv[1]
 except Exception:

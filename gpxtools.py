@@ -25,6 +25,7 @@ from datetime import timedelta
 ns = '{http://www.topografix.com/GPX/1/1}'
 
 do_merge = False
+do_duplicate_search=False
 base_file = ''
 
 
@@ -131,7 +132,7 @@ def make_filename(d, dir='.'):
 
 
 def split(filename, tz, split_time=timedelta()):
-    global ns, do_merge
+    global ns, do_merge, do_duplicate_search
 
     try:
         tree0 = etree.parse(filename)
@@ -169,7 +170,17 @@ def split(filename, tz, split_time=timedelta()):
             elif name in tracks:
                 oldnum = tracks[name]['numpts']
                 newnum = get_numpts(trk, ns)
-                if oldnum >= newnum:
+                # sometimes there is no name and a huge file.. then just merge the segments..
+                if do_duplicate_search == False:
+                    print("%-25s: DUPLICATES  %s (track points: old=%d + new=%d) -> concating" % (
+                        fname, name, oldnum, newnum))
+                    for trkseg in trk.iterchildren():
+                        tracks[name]['track'].append(trkseg)
+                    tracks[name]['numpts']+=newnum
+                    print("%-25s: DUPLICATES  %s (track points: old=%d + new=%d) = concated %d" % (
+                        fname, name, oldnum, newnum, len(tracks[name]['track'].findall('.//'+ns+'trkpt'))))
+                    root.remove(trk)
+                elif oldnum >= newnum:
                     print("%-25s: DUPLICATE %s (track points: old=%d, new=%d) -> removing" % (
                         fname, name, oldnum, newnum))
                     root.remove(trk)
