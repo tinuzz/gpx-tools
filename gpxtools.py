@@ -15,42 +15,66 @@
 import os
 import copy
 from iso8601 import parse_date
-from pprint import pprint,pformat
-from lxml import etree       # apt-get install python3-lxml
+from pprint import pprint, pformat
+from lxml import etree  # apt-get install python3-lxml
 from math import radians, sin, cos, atan2, sqrt
-from pytz import timezone    # apt-get install python3-tz
+from pytz import timezone  # apt-get install python3-tz
+from datetime import timedelta
 
-#ns = '{http://www.topografix.com/GPX/1/0}'
+# ns = '{http://www.topografix.com/GPX/1/0}'
 ns = '{http://www.topografix.com/GPX/1/1}'
 
 do_merge = False
+do_duplicate_search=False
 base_file = ''
 
+
 # Get unique dates from all tracks
-def get_dates(tree, ns):
+def get_dates(tree, ns, tz, split_time):
     dates = set()
     for trk in tree.iterchildren(ns + 'trk'):
-        dates.add(get_date(trk, ns))
+        dates.add(get_date(trk, ns, tz, split_time=split_time))
     return dates
+
 
 def get_name(trk, ns):
     return trk.findtext(ns + 'name') or ''
 
-def get_date(trk, ns, tz=None):
+
+def get_date(trk, ns, tz=None, split_time=timedelta()):
     gpxtime = trk.findtext(ns + 'trkseg/' + ns + 'trkpt/' + ns + 'time')
+    tzobj = None
 
-    # parse_date returns a datetime.datetime
-    if tz is not None:
+    # use automatic timezone from coordinates
+    if type(tz).__name__ == "TimezoneFinder":
+        lat = trk.find(ns + 'trkseg/' + ns + 'trkpt[@lat]')
+        lng = lat.get('lon')
+        lat = lat.get('lat')
+        # From the lat/long, get the tz-database-style time zone name (e.g. 'America/Vancouver') or None
+        timezone_str = tz.certain_timezone_at(lat=float(lat), lng=float(lng))
+
+        if timezone_str is None:
+            # print("Could not determine the time zone")
+            pass
+        else:
+            # Display the current time in that time zone
+            tzobj = timezone(timezone_str)
+
+    # use timezone which is globally specified
+    elif tz is not None:
         tzobj = timezone(tz)
-        return parse_date(gpxtime).astimezone(tzobj).date()
 
-    return parse_date(gpxtime).date()
+    # parse_date returns a datetime.datetime by timezone if isset
+    if tzobj is not None:
+        return (parse_date(gpxtime) - split_time).astimezone(tzobj).date()
+
+    return (parse_date(gpxtime) - split_time).parse_date(gpxtime).date()
+
 
 def get_datetime(trk, ns, tz=None):
     gpxtime = trk.findtext(ns + 'trkseg/' + ns + 'trkpt/' + ns + 'time')
 
     if gpxtime is not None:
-
         # parse_date returns a datetime.datetime
         if tz is not None:
             tzobj = timezone(tz)
@@ -58,49 +82,57 @@ def get_datetime(trk, ns, tz=None):
 
         return parse_date(gpxtime)
 
+
 def get_numpts(trk, ns):
     return len(trk.findall(ns + 'trkseg/' + ns + 'trkpt'))
+
 
 def get_numtrk(root, ns):
     return len(root.findall(ns + 'trk'))
 
+
 def get_numwpt(root, ns):
     return len(root.findall(ns + 'wpt'))
+
 
 def get_numrte(root, ns):
     return len(root.findall(ns + 'rte'))
 
+
 def get_numrtept(rte, ns):
     return len(rte.findall(ns + 'rtept'))
 
+
 def distance(lat1, lon1, lat2, lon2):
-    radius = 6371000 # meter
+    radius = 6371000  # meter
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
 
     dlat = lat2 - lat1
     dlon = lon2 - lon1
-    a = sin(dlat/2) * sin(dlat/2) + cos(lat1) \
-        * cos(lat2) * sin(dlon/2) * sin(dlon/2)
-    c = 2 * atan2(sqrt(a), sqrt(1-a))
+    a = sin(dlat / 2) * sin(dlat / 2) + cos(lat1) \
+        * cos(lat2) * sin(dlon / 2) * sin(dlon / 2)
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
     d = radius * c
     return d
+
 
 def make_filename(d, dir='.'):
     global do_merge, base_file
     do_merge = False
     n = 0
     fn = "%s-%03d.gpx" % (d.isoformat(), n)
-    fname =  os.path.join (dir, fn)
+    fname = os.path.join(dir, fn)
     base_file = fname
     while os.path.exists(fname):
         n += 1
         fn = "%s-%03d.gpx" % (d.isoformat(), n)
-        fname =  os.path.join (dir, fn)
+        fname = os.path.join(dir, fn)
         do_merge = True
     return fname
 
-def split(filename, tz):
-    global ns
+
+def split(filename, tz, split_time=timedelta()):
+    global ns, do_merge, do_duplicate_search
 
     try:
         tree0 = etree.parse(filename)
@@ -113,7 +145,7 @@ def split(filename, tz):
     # Get the XML namespace from the tree
     ns = "{%s}" % root.nsmap[None]
 
-    dates = get_dates(root, ns)
+    dates = get_dates(root, ns, tz, split_time=split_time)
 
     # Iterate over the dates and remove non-matching tracks from the tree
     for d in dates:
@@ -128,36 +160,50 @@ def split(filename, tz):
                 root.remove(trk)
                 continue
 
-            name      = get_name(trk, ns)
-            trackdate = get_date(trk, ns, tz)
+            name = get_name(trk, ns)
+
+            trackdate = get_date(trk, ns, tz, split_time=split_time)
 
             if trackdate != d:
-                #print("%-25s: date mismatch, removing %s" % (fname, name))
+                # print("%-25s: date mismatch, removing %s" % (fname, name))
                 root.remove(trk)
             elif name in tracks:
                 oldnum = tracks[name]['numpts']
                 newnum = get_numpts(trk, ns)
-                if oldnum >= newnum:
-                    print("%-25s: DUPLICATE %s (track points: old=%d, new=%d) -> removing" % (fname, name, oldnum, newnum))
+                # sometimes there is no name and a huge file.. then just merge the segments..
+                if do_duplicate_search == False:
+                    print("%-25s: DUPLICATES  %s (track points: old=%d + new=%d) -> concating" % (
+                        fname, name, oldnum, newnum))
+                    for trkseg in trk.iterchildren():
+                        tracks[name]['track'].append(trkseg)
+                    tracks[name]['numpts']+=newnum
+                    print("%-25s: DUPLICATES  %s (track points: old=%d + new=%d) = concated %d" % (
+                        fname, name, oldnum, newnum, len(tracks[name]['track'].findall('.//'+ns+'trkpt'))))
+                    root.remove(trk)
+                elif oldnum >= newnum:
+                    print("%-25s: DUPLICATE %s (track points: old=%d, new=%d) -> removing" % (
+                        fname, name, oldnum, newnum))
                     root.remove(trk)
                 else:
                     # newnum > oldnum. Old track should be removed and this one kept.
-                    print("%-25s: duplicate %s (track points differ, old=%d new=%d) -> keeping and removing the old one" % \
+                    print(
+                        "%-25s: duplicate %s (track points differ, old=%d new=%d) -> keeping and removing the old one" % \
                         (fname, name, oldnum, newnum))
                     root.remove(tracks[name]['track'])
-                    tracks[name] = { 'numpts': newnum, 'track': trk }
+                    tracks[name] = {'numpts': newnum, 'track': trk}
             else:
                 numpts = get_numpts(trk, ns)
-                tracks[name] = { 'numpts': numpts, 'track': trk }
-                #print("%-25s: keeping %s" % (fname, name))
+                tracks[name] = {'numpts': numpts, 'track': trk}
+                # print("%-25s: keeping %s" % (fname, name))
 
         print("%-25s: writing file" % fname)
-        tree.write(fname, xml_declaration = True, encoding='utf-8')
+        tree.write(fname, xml_declaration=True, encoding='utf-8')
 
         # Merge if necessary
         if do_merge:
             print("%-25s: starting merge into %s" % (fname, base_file))
             merge(base_file, fname, False)
+
 
 # Merge tracks from file2 into file1.
 # On duplicate names, keep the track with the most track points.
@@ -175,32 +221,32 @@ def merge(file1, file2, interactive=True):
     ns1 = "{%s}" % root1.nsmap[None]
     ns2 = "{%s}" % root2.nsmap[None]
 
-    #print("%-25s: Namespace: %s" % (file1, ns1))
-    #print("%-25s: Namespace: %s" % (file2, ns2))
+    # print("%-25s: Namespace: %s" % (file1, ns1))
+    # print("%-25s: Namespace: %s" % (file2, ns2))
 
     modified = False
 
     # Analyze the first file
     tracks1 = {}
     for trk in root1.iterchildren(ns1 + 'trk'):
-        name   = get_name(trk, ns1)
+        name = get_name(trk, ns1)
         numpts = get_numpts(trk, ns1)
         if not name in tracks1:
-            tracks1[name] = { 'numpts': numpts, 'track': trk }
+            tracks1[name] = {'numpts': numpts, 'track': trk}
         else:
             print("Track '%s' already seen in '%s'. File contains dupes?" % (name, file1))
             oldnum = tracks[name]['numpts']
             if numpts > oldnum:
                 print("Duplicate '%s' replacing old track (old=%d, new=%d points)" % (name, oldnum, numpts))
-                tracks1[name] = { 'numpts': numpts, 'track': trk }
+                tracks1[name] = {'numpts': numpts, 'track': trk}
 
     for trk in root2.iterchildren(ns2 + 'trk'):
-        name   = get_name(trk, ns2)
+        name = get_name(trk, ns2)
         numpts = get_numpts(trk, ns2)
         if not name in tracks1:
             print("%-25s: appending track '%s'" % (file1, name))
             root1.append(copy.deepcopy(trk))
-            tracks1[name] = { 'numpts': numpts, 'track': trk }
+            tracks1[name] = {'numpts': numpts, 'track': trk}
             modified = True
         else:
             oldpts = tracks1[name]['numpts']
@@ -208,32 +254,33 @@ def merge(file1, file2, interactive=True):
                 print("%-25s: replacing track '%s'. oldpts=%d. newpts=%d" % (file2, name, oldpts, numpts))
                 root1.remove(tracks1[name]['track'])
                 root1.append(copy.deepcopy(trk))
-                tracks1[name] = { 'numpts': numpts, 'track': trk }
+                tracks1[name] = {'numpts': numpts, 'track': trk}
                 modified = True
-            #else:
+            # else:
             #    print("%-25s: skipping track '%s'. oldpts=%d. newpts=%d" % (file2, name, oldpts, numpts))
 
     if modified:
-        yn=False
+        yn = False
         if interactive:
-            while yn not in ['y','n']:
+            while yn not in ['y', 'n']:
                 yn = input("Overwrite '%s' and remove '%s' ? (y/n)" % (file1, file2))
 
         if not interactive or yn == 'y':
             print("%-25s: Overwriting file" % file1)
-            tree1.write(file1, xml_declaration = True, encoding='utf-8')
+            tree1.write(file1, xml_declaration=True, encoding='utf-8')
             print("%-25s: Removing file" % file2)
             os.remove(file2)
 
     else:
         print("%-25s: No changes to write to file" % file1)
-        yn=False
+        yn = False
         if interactive:
-            while yn not in ['y','n']:
+            while yn not in ['y', 'n']:
                 yn = raw_input("Remove '%s' ? (y/n)" % file2)
         if not interactive or yn == 'y':
             print("%-25s: Removing file" % file2)
             os.remove(file2)
+
 
 def info(filename, tz):
     global ns
