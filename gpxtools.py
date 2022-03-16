@@ -261,24 +261,42 @@ def info(filename, tz):
         print("Track date/time  : %s " % trackdate)
         n = 0
         trkd = 0
+        d_up   = 0
+        d_down = 0
+        d_flat = 0
+
         for trkseg in trk.iterchildren(ns + 'trkseg'):
             numpts = len(list(trkseg))
             oldlat = None
-            d = 0
+            oldele = None
+            d      = 0
             for trkpt in trkseg.iterchildren(ns + 'trkpt'):
                 lat = float(trkpt.get('lat'))
                 lon = float(trkpt.get('lon'))
                 if oldlat != None:
-                    d += distance(oldlat, oldlon, lat, lon)
+                    dt = distance(oldlat, oldlon, lat, lon)
+                    d += dt
+                for ele in trkpt.iterchildren(ns + 'ele'):
+                    if oldele and float(ele.text) > oldele:
+                        d_up += dt
+                    if oldele and float(ele.text) < oldele:
+                        d_down += dt
+                    if oldele and float(ele.text) == oldele:
+                        d_flat += dt
+
                 oldlat = lat
                 oldlon = lon
+                oldele = float(ele.text)
             print("Segment %3d    : %4d track points, distance: %d meter" % (n, numpts, d))
             n += 1
             trkd += d
 
         pts = get_numpts(trk, ns)
-        print("Total points     : %4d" % pts)
-        print("Total distance   : %d meter" % trkd)
+        print("Total points        : %4d" % pts)
+        print("Total distance      : %d meter" % trkd)
+        print("Total distance up   : %d meter" % d_up)
+        print("Total distance down : %d meter" % d_down)
+        print("Total distance flat : %d meter" % d_flat)
         print('')
 
     for rte in root.iterchildren(ns + 'rte'):
